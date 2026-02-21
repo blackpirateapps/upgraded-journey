@@ -1,4 +1,52 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Blank App</string>
+    <string name="app_name">Note App</string>
+
+    <!-- Navigation -->
+    <string name="nav_new_note">New Note</string>
+    <string name="nav_info">Info</string>
+
+    <!-- New Note Screen -->
+    <string name="label_mode">Mode</string>
+    <string name="label_raw_mode">Raw mode</string>
+    <string name="hint_title">Title</string>
+    <string name="hint_body">Start writing…</string>
+
+    <!-- Tags -->
+    <string name="label_tags">Tags</string>
+    <string name="tag_website">website</string>
+    <string name="tag_quotes">quotes</string>
+    <string name="tag_articles">articles</string>
+    <string name="tag_bookmarks">bookmarks</string>
+    <string name="tag_study">study</string>
+    <string name="label_custom_tags">Custom tags (comma-separated)</string>
+    <string name="hint_custom_tags">example, another-tag</string>
+
+    <!-- Image -->
+    <string name="label_upload_image">Upload Image</string>
+    <string name="label_no_file">No file selected.</string>
+
+    <!-- Settings -->
+    <string name="label_image_path">Image Path</string>
+    <string name="hint_image_path">assets/img</string>
+    <string name="label_shortcode">Shortcode Template (use IMAGE_NAME)</string>
+    <string name="hint_shortcode">{{&lt; img src=\"/img/IMAGE_NAME\" &gt;}}</string>
+    <string name="label_password">Password</string>
+    <string name="label_save_password">Save Password</string>
+
+    <!-- Action -->
+    <string name="action_save_note">Save Note</string>
+
+    <!-- Info Screen -->
+    <string name="info_title">About Note App</string>
+    <string name="info_version">Version 1.0</string>
+    <string name="info_description">A simple note-taking app for creating and managing notes with tags, images, and custom shortcodes. Backend integration coming soon.</string>
+    <string name="info_developer">Developed with ❤️</string>
+
+    <!-- Mode dropdown items -->
+    <string-array name="mode_items">
+        <item>Markdown</item>
+        <item>Plain Text</item>
+        <item>HTML</item>
+    </string-array>
 </resources>
