@@ -5,6 +5,14 @@
         android:icon="@drawable/ic_note"
         android:title="@string/nav_new_note" />
     <item
+        android:id="@+id/postsFragment"
+        android:icon="@drawable/ic_posts"
+        android:title="Posts" />
+    <item
+        android:id="@+id/queueFragment"
+        android:icon="@drawable/ic_queue"
+        android:title="Queue" />
+    <item
         android:id="@+id/infoFragment"
         android:icon="@drawable/ic_info"
         android:title="@string/nav_info" />

@@ -12,6 +12,18 @@
         tools:layout="@layout/fragment_new_note" />
 
     <fragment
+        android:id="@+id/postsFragment"
+        android:name="com.example.blankapp.PostsFragment"
+        android:label="Posts"
+        tools:layout="@layout/fragment_posts" />
+
+    <fragment
+        android:id="@+id/queueFragment"
+        android:name="com.example.blankapp.QueueFragment"
+        android:label="Queue"
+        tools:layout="@layout/fragment_queue" />
+
+    <fragment
         android:id="@+id/infoFragment"
         android:name="com.example.blankapp.InfoFragment"
         android:label="@string/nav_info"

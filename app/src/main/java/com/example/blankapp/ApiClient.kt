@@ -110,4 +110,39 @@ object ApiClient {
             PostResult(false, e.message ?: "Unknown error", null, log.toString())
         }
     }
+
+    /**
+     * Fetches all posts from GET /api/get-posts
+     */
+    suspend fun getPosts(): List<PostItem> = withContext(Dispatchers.IO) {
+        try {
+            val request = Request.Builder()
+                .url("$BASE_URL/api/get-posts")
+                .get()
+                .build()
+
+            val response = client.newCall(request).execute()
+            val body = response.body?.string() ?: ""
+            if (response.isSuccessful) {
+                val json = JSONObject(body)
+                val postsArray = json.getJSONArray("posts")
+                val items = mutableListOf<PostItem>()
+                for (i in 0 until postsArray.length()) {
+                    val obj = postsArray.getJSONObject(i)
+                    items.add(
+                        PostItem(
+                            name = obj.getString("name"),
+                            path = obj.getString("path"),
+                            url = obj.getString("url")
+                        )
+                    )
+                }
+                items
+            } else emptyList()
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
 }
+
+data class PostItem(val name: String, val path: String, val url: String)

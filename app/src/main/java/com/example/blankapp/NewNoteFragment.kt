@@ -15,27 +15,30 @@ import android.widget.ArrayAdapter
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
+import androidx.work.*
+import com.example.blankapp.data.PendingPost
+import com.example.blankapp.data.QueueDatabase
 import com.example.blankapp.databinding.FragmentNewNoteBinding
+import com.example.blankapp.sync.SyncWorker
 import com.google.android.material.chip.Chip
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
+import java.util.concurrent.TimeUnit
 
 class NewNoteFragment : Fragment() {
 
     private var _binding: FragmentNewNoteBinding? = null
     private val binding get() = _binding!!
 
-    // "Markdown" = show only body; "Plain Text" = show full frontmatter block
     private var currentMode = "Markdown"
     private var userBody = ""
     private var dateCreated: ZonedDateTime? = null
     private var dateLastMod: ZonedDateTime? = null
     private val isoFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssxxx")
 
-    // Pending image data for upload
     private var selectedImageUri: Uri? = null
     private var selectedImageName: String? = null
 
@@ -66,8 +69,6 @@ class NewNoteFragment : Fragment() {
         setupSavePasswordCheckbox()
     }
 
-    // ─── Mode ────────────────────────────────────────────────────────────────
-
     private fun setupModeDropdown() {
         val modes = resources.getStringArray(R.array.mode_items)
         val adapter = ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, modes)
@@ -79,8 +80,6 @@ class NewNoteFragment : Fragment() {
         }
     }
 
-    // ─── Body TextWatcher ────────────────────────────────────────────────────
-
     private fun setupBodyWatcher() {
         binding.editBody.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
@@ -91,7 +90,6 @@ class NewNoteFragment : Fragment() {
                 if (dateCreated == null && !s.isNullOrEmpty()) dateCreated = now
                 if (!s.isNullOrEmpty()) dateLastMod = now
                 userBody = extractBody(s.toString())
-                // In Plain Text mode, rebuild the full block live
                 if (currentMode == "Plain Text") {
                     val rebuilt = buildFullBlock()
                     if (rebuilt != s.toString()) {
@@ -105,8 +103,6 @@ class NewNoteFragment : Fragment() {
             }
         })
     }
-
-    // ─── Tags ────────────────────────────────────────────────────────────────
 
     private fun setupTagListeners() {
         val chipGroup = binding.chipGroupTags
@@ -137,8 +133,6 @@ class NewNoteFragment : Fragment() {
         }
         return tags
     }
-
-    // ─── Frontmatter ─────────────────────────────────────────────────────────
 
     private fun buildFrontmatter(): String {
         val title = binding.editTitle.text.toString().trim()
@@ -173,8 +167,6 @@ class NewNoteFragment : Fragment() {
         isProgrammaticChange = false
     }
 
-    // ─── Image picker ────────────────────────────────────────────────────────
-
     private fun setupUploadButton() {
         binding.btnUploadImage.setOnClickListener {
             imagePickerLauncher.launch("image/*")
@@ -186,8 +178,6 @@ class NewNoteFragment : Fragment() {
         selectedImageUri = uri
         selectedImageName = fileName
         binding.textFileName.text = fileName
-
-        // Insert shortcode into body
         val shortcode = binding.editShortcode.text.toString().replace("IMAGE_NAME", fileName)
         userBody = if (userBody.isEmpty()) shortcode else "$userBody\n$shortcode"
         syncEditorToMode()
@@ -214,8 +204,6 @@ class NewNoteFragment : Fragment() {
         return "data:$mimeType;base64,$encoded"
     }
 
-    // ─── Debug panel ─────────────────────────────────────────────────────────
-
     private fun setupDebugPanel() {
         binding.btnClearLog.setOnClickListener {
             binding.textDebugLog.text = ""
@@ -234,14 +222,11 @@ class NewNoteFragment : Fragment() {
             StatusColor.ERROR   -> Pair(Color.parseColor("#B71C1C"), Color.WHITE)
         }
         if (bg != null) {
-            binding.chipStatus.chipBackgroundColor =
-                android.content.res.ColorStateList.valueOf(bg)
+            binding.chipStatus.chipBackgroundColor = android.content.res.ColorStateList.valueOf(bg)
             binding.chipStatus.setTextColor(fg!!)
         } else {
             binding.chipStatus.chipBackgroundColor = null
-            binding.chipStatus.setTextColor(
-                binding.textDebugLog.currentTextColor
-            )
+            binding.chipStatus.setTextColor(binding.textDebugLog.currentTextColor)
         }
     }
 
@@ -249,8 +234,6 @@ class NewNoteFragment : Fragment() {
         val current = binding.textDebugLog.text.toString()
         binding.textDebugLog.text = if (current.isEmpty()) msg else "$current\n$msg"
     }
-
-    // ─── Save / API call ─────────────────────────────────────────────────────
 
     private fun setupSaveButton() {
         binding.btnSaveNote.setOnClickListener {
@@ -261,10 +244,7 @@ class NewNoteFragment : Fragment() {
                 setStatus("Error", StatusColor.ERROR)
                 return@setOnClickListener
             }
-
             if (binding.checkSavePassword.isChecked) savePassword(password)
-
-            // Show debug panel and start
             binding.cardDebugLog.visibility = View.VISIBLE
             binding.textDebugLog.text = ""
             setStatus("Sending…", StatusColor.SENDING)
@@ -279,41 +259,61 @@ class NewNoteFragment : Fragment() {
             val imgName = selectedImageName
 
             viewLifecycleOwner.lifecycleScope.launch {
-                // Read image bytes off main thread
                 val imageData = if (imgUri != null) {
                     withContext(Dispatchers.IO) { readImageAsBase64(imgUri) }
                 } else null
 
                 val result = withContext(Dispatchers.IO) {
                     ApiClient.quickPost(
-                        password = password,
-                        title = title,
-                        content = content,
-                        tags = tags,
-                        imageData = imageData,
-                        imageName = imgName,
-                        imagePath = imagePath,
+                        password = password, title = title, content = content, tags = tags,
+                        imageData = imageData, imageName = imgName, imagePath = imagePath,
                         shortcodeTemplate = shortcodeTemplate,
-                        onDebug = { msg ->
-                            // post to main thread
-                            activity?.runOnUiThread { appendDebug(msg) }
-                        }
+                        onDebug = { msg -> activity?.runOnUiThread { appendDebug(msg) } }
                     )
                 }
 
-                binding.btnSaveNote.isEnabled = true
                 if (result.success) {
+                    binding.btnSaveNote.isEnabled = true
                     setStatus("Success ✓", StatusColor.SUCCESS)
                     result.path?.let { appendDebug("\n→ Published at:\n  $it") }
                 } else {
-                    setStatus("Error", StatusColor.ERROR)
-                    appendDebug("\n✗ Failed: ${result.message}")
+                    appendDebug("\n✗ Failed or Offline: ${result.message}")
+                    appendDebug("Adding to Sync Queue…")
+                    
+                    withContext(Dispatchers.IO) {
+                        val dao = QueueDatabase.getDatabase(requireContext()).pendingPostDao()
+                        dao.insert(PendingPost(
+                            title = title, content = content, tags = tags.joinToString(","),
+                            imageData = imageData, imageName = imgName, imagePath = imagePath,
+                            shortcodeTemplate = shortcodeTemplate
+                        ))
+                    }
+                    
+                    scheduleSync()
+                    binding.btnSaveNote.isEnabled = true
+                    setStatus("Queued", StatusColor.NEUTRAL)
+                    appendDebug("✓ Added to queue. Will sync in background.")
                 }
             }
         }
     }
 
-    // ─── Password persistence ────────────────────────────────────────────────
+    private fun scheduleSync() {
+        val constraints = Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .build()
+            
+        val syncRequest = OneTimeWorkRequestBuilder<SyncWorker>()
+            .setConstraints(constraints)
+            .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 1, TimeUnit.MINUTES)
+            .build()
+            
+        WorkManager.getInstance(requireContext()).enqueueUniqueWork(
+            "sync_posts",
+            ExistingWorkPolicy.APPEND_OR_REPLACE,
+            syncRequest
+        )
+    }
 
     private fun loadSavedPassword() {
         val prefs = prefs()
@@ -336,8 +336,6 @@ class NewNoteFragment : Fragment() {
     }
 
     private fun prefs() = requireContext().getSharedPreferences("microblog_prefs", Context.MODE_PRIVATE)
-
-    // ─── Lifecycle ───────────────────────────────────────────────────────────
 
     override fun onDestroyView() {
         super.onDestroyView()
