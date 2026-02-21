@@ -1,24 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="md_theme_primary">#FF6750A4</color>
+    <!-- Teal/Cyan based Material 3 color scheme -->
+    <color name="md_theme_primary">#FF006A6A</color>
     <color name="md_theme_onPrimary">#FFFFFFFF</color>
-    <color name="md_theme_primaryContainer">#FFEADDFF</color>
-    <color name="md_theme_onPrimaryContainer">#FF21005D</color>
-    <color name="md_theme_secondary">#FF625B71</color>
+    <color name="md_theme_primaryContainer">#FF9EF0F0</color>
+    <color name="md_theme_onPrimaryContainer">#FF002020</color>
+    <color name="md_theme_secondary">#FF4A6363</color>
     <color name="md_theme_onSecondary">#FFFFFFFF</color>
-    <color name="md_theme_secondaryContainer">#FFE8DEF8</color>
-    <color name="md_theme_onSecondaryContainer">#FF1D192B</color>
-    <color name="md_theme_tertiary">#FF7D5260</color>
+    <color name="md_theme_secondaryContainer">#FFCCE8E7</color>
+    <color name="md_theme_onSecondaryContainer">#FF051F1F</color>
+    <color name="md_theme_tertiary">#FF4B607C</color>
     <color name="md_theme_onTertiary">#FFFFFFFF</color>
-    <color name="md_theme_tertiaryContainer">#FFFFD8E4</color>
-    <color name="md_theme_onTertiaryContainer">#FF31111D</color>
-    <color name="md_theme_error">#FFB3261E</color>
+    <color name="md_theme_tertiaryContainer">#FFD3E4FF</color>
+    <color name="md_theme_onTertiaryContainer">#FF041C35</color>
+    <color name="md_theme_error">#FFBA1A1A</color>
     <color name="md_theme_onError">#FFFFFFFF</color>
-    <color name="md_theme_background">#FFFFFBFE</color>
-    <color name="md_theme_onBackground">#FF1C1B1F</color>
-    <color name="md_theme_surface">#FFFFFBFE</color>
-    <color name="md_theme_onSurface">#FF1C1B1F</color>
-    <color name="md_theme_surfaceVariant">#FFE7E0EC</color>
-    <color name="md_theme_onSurfaceVariant">#FF49454F</color>
-    <color name="md_theme_outline">#FF79747E</color>
+    <color name="md_theme_background">#FFFAFDFB</color>
+    <color name="md_theme_onBackground">#FF191C1C</color>
+    <color name="md_theme_surface">#FFFAFDFB</color>
+    <color name="md_theme_onSurface">#FF191C1C</color>
+    <color name="md_theme_surfaceVariant">#FFDAE5E4</color>
+    <color name="md_theme_onSurfaceVariant">#FF3F4948</color>
+    <color name="md_theme_outline">#FF6F7979</color>
 </resources>

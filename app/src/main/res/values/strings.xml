@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Note App</string>
+    <string name="app_name">Microblog</string>
 
     <!-- Navigation -->
     <string name="nav_new_note">New Note</string>
@@ -38,15 +38,14 @@
     <string name="action_save_note">Save Note</string>
 
     <!-- Info Screen -->
-    <string name="info_title">About Note App</string>
+    <string name="info_title">About Microblog</string>
     <string name="info_version">Version 1.0</string>
-    <string name="info_description">A simple note-taking app for creating and managing notes with tags, images, and custom shortcodes. Backend integration coming soon.</string>
+    <string name="info_description">A microblogging app for creating notes with frontmatter, tags, images, and custom shortcodes. Backend integration coming soon.</string>
     <string name="info_developer">Developed with ❤️</string>
 
     <!-- Mode dropdown items -->
     <string-array name="mode_items">
         <item>Markdown</item>
         <item>Plain Text</item>
-        <item>HTML</item>
     </string-array>
 </resources>
