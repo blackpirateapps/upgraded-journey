@@ -8,7 +8,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.blankapp.data.PendingPost
-import com.example.blankapp.data.QueueDatabase
+import com.example.blankapp.data.QueueStore
 import com.example.blankapp.databinding.FragmentQueueBinding
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -29,9 +29,9 @@ class QueueFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         binding.recyclerQueue.layoutManager = LinearLayoutManager(requireContext())
 
-        val database = QueueDatabase.getDatabase(requireContext())
+        val store = QueueStore.getInstance(requireContext())
         viewLifecycleOwner.lifecycleScope.launch {
-            database.pendingPostDao().getAll().collectLatest { posts ->
+            store.getAll().collectLatest { posts ->
                 if (posts.isEmpty()) {
                     binding.textEmptyQueue.visibility = View.VISIBLE
                     binding.recyclerQueue.visibility = View.GONE

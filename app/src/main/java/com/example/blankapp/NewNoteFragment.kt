@@ -17,7 +17,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.work.*
 import com.example.blankapp.data.PendingPost
-import com.example.blankapp.data.QueueDatabase
+import com.example.blankapp.data.QueueStore
 import com.example.blankapp.databinding.FragmentNewNoteBinding
 import com.example.blankapp.sync.SyncWorker
 import com.google.android.material.chip.Chip
@@ -281,8 +281,8 @@ class NewNoteFragment : Fragment() {
                     appendDebug("Adding to Sync Queue…")
                     
                     withContext(Dispatchers.IO) {
-                        val dao = QueueDatabase.getDatabase(requireContext()).pendingPostDao()
-                        dao.insert(PendingPost(
+                        val store = QueueStore.getInstance(requireContext())
+                        store.insert(PendingPost(
                             title = title, content = content, tags = tags.joinToString(","),
                             imageData = imageData, imageName = imgName, imagePath = imagePath,
                             shortcodeTemplate = shortcodeTemplate
