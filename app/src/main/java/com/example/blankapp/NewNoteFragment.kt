@@ -15,15 +15,31 @@ import androidx.fragment.app.Fragment
 import com.example.blankapp.databinding.FragmentNewNoteBinding
 import com.google.android.material.chip.Chip
 import com.google.android.material.snackbar.Snackbar
+import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
 
 class NewNoteFragment : Fragment() {
 
     private var _binding: FragmentNewNoteBinding? = null
     private val binding get() = _binding!!
 
+    // "Markdown" = user sees only body; "Plain Text" / Raw = user sees full frontmatter block
     private var currentMode = "Markdown"
-    private var userContent = ""
-    private var selectedImageName: String? = null
+
+    // The raw user-written body (never includes frontmatter)
+    private var userBody = ""
+
+    // Timestamp set once on the very first keystroke in the body field
+    private var dateCreated: ZonedDateTime? = null
+
+    // Updated on every body keystroke
+    private var dateLastMod: ZonedDateTime? = null
+
+    private val isoFormatter: DateTimeFormatter =
+        DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssxxx")
+
+    // Flag to avoid recursive TextWatcher loops when we programmatically update the field
+    private var isProgrammaticChange = false
 
     private val imagePickerLauncher = registerForActivityResult(
         ActivityResultContracts.GetContent()
@@ -32,9 +48,7 @@ class NewNoteFragment : Fragment() {
     }
 
     override fun onCreateView(
-        inflater: LayoutInflater,
-        container: ViewGroup?,
-        savedInstanceState: Bundle?
+        inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
     ): View {
         _binding = FragmentNewNoteBinding.inflate(inflater, container, false)
         return binding.root
@@ -43,81 +57,106 @@ class NewNoteFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         setupModeDropdown()
-        setupSaveButton()
+        setupBodyWatcher()
+        setupTagListeners()
         setupUploadButton()
-        setupFrontmatterListeners()
+        setupSaveButton()
         loadSavedPassword()
         setupSavePasswordCheckbox()
     }
 
+    // ─── Mode dropdown ───────────────────────────────────────────────────────
+
     private fun setupModeDropdown() {
-        val modes = resources.getStringArray(R.array.mode_items)
+        val modes = resources.getStringArray(R.array.mode_items) // ["Markdown", "Plain Text"]
         val adapter = ArrayAdapter(
-            requireContext(),
-            android.R.layout.simple_dropdown_item_1line,
-            modes
+            requireContext(), android.R.layout.simple_dropdown_item_1line, modes
         )
         binding.modeAutoComplete.setAdapter(adapter)
         binding.modeAutoComplete.setText(modes[0], false)
 
         binding.modeAutoComplete.setOnItemClickListener { _, _, position, _ ->
             currentMode = modes[position]
-            updateBodyForMode()
+            syncEditorToMode()
         }
     }
 
-    private fun setupFrontmatterListeners() {
-        // Listen to title changes
-        binding.editTitle.addTextChangedListener(object : TextWatcher {
+    // ─── Body text watcher ───────────────────────────────────────────────────
+
+    private fun setupBodyWatcher() {
+        binding.editBody.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
             override fun afterTextChanged(s: Editable?) {
+                if (isProgrammaticChange) return
+
+                val now = ZonedDateTime.now()
+                // First keystroke → set date
+                if (dateCreated == null && !s.isNullOrEmpty()) {
+                    dateCreated = now
+                }
+                // Every keystroke → update lastmod
+                if (!s.isNullOrEmpty()) {
+                    dateLastMod = now
+                }
+
+                // Extract body from what's visible
+                userBody = extractBody(s.toString())
+                // In raw mode, keep the full block in sync without re‑rendering (would loop)
                 if (currentMode == "Plain Text") {
-                    updateBodyForMode()
+                    // Rebuild frontmatter+body and set, guarding the watcher
+                    val rebuilt = buildFullBlock()
+                    if (rebuilt != s.toString()) {
+                        isProgrammaticChange = true
+                        val selStart = binding.editBody.selectionStart
+                        binding.editBody.setText(rebuilt)
+                        // Try to restore cursor reasonably
+                        binding.editBody.setSelection(
+                            selStart.coerceAtMost(rebuilt.length)
+                        )
+                        isProgrammaticChange = false
+                    }
                 }
             }
         })
+    }
 
-        // Listen to custom tags changes
+    // ─── Tag listeners ───────────────────────────────────────────────────────
+
+    private fun setupTagListeners() {
+        val chipGroup = binding.chipGroupTags
+        for (i in 0 until chipGroup.childCount) {
+            (chipGroup.getChildAt(i) as? Chip)?.setOnCheckedChangeListener { _, _ ->
+                onMetaChanged()
+            }
+        }
         binding.editCustomTags.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
-            override fun afterTextChanged(s: Editable?) {
-                if (currentMode == "Plain Text") {
-                    updateBodyForMode()
-                }
-            }
+            override fun afterTextChanged(s: Editable?) { onMetaChanged() }
         })
+    }
 
-        // Listen to chip changes
-        val chipIds = listOf(
-            binding.chipWebsite, binding.chipQuotes, binding.chipArticles,
-            binding.chipBookmarks, binding.chipStudy
-        )
-        chipIds.forEach { chip ->
-            chip.setOnCheckedChangeListener { _, _ ->
-                if (currentMode == "Plain Text") {
-                    updateBodyForMode()
-                }
-            }
+    /** Called whenever title / tags change so Raw mode stays up to date */
+    private fun onMetaChanged() {
+        if (currentMode == "Plain Text") {
+            syncEditorToMode()
         }
     }
+
+    // ─── Frontmatter helpers ─────────────────────────────────────────────────
 
     private fun getSelectedTags(): List<String> {
         val tags = mutableListOf<String>()
         val chipGroup = binding.chipGroupTags
         for (i in 0 until chipGroup.childCount) {
             val chip = chipGroup.getChildAt(i) as? Chip
-            if (chip?.isChecked == true) {
-                tags.add(chip.text.toString())
-            }
+            if (chip?.isChecked == true) tags.add(chip.text.toString())
         }
-        // Add custom tags
-        val customTags = binding.editCustomTags.text.toString().trim()
-        if (customTags.isNotEmpty() && customTags != getString(R.string.hint_custom_tags)) {
-            customTags.split(",").map { it.trim() }.filter { it.isNotEmpty() }.forEach {
-                tags.add(it)
-            }
+        val custom = binding.editCustomTags.text.toString().trim()
+        val placeholder = getString(R.string.hint_custom_tags)
+        if (custom.isNotEmpty() && custom != placeholder) {
+            custom.split(",").map { it.trim() }.filter { it.isNotEmpty() }.forEach { tags.add(it) }
         }
         return tags
     }
@@ -125,65 +164,52 @@ class NewNoteFragment : Fragment() {
     private fun buildFrontmatter(): String {
         val title = binding.editTitle.text.toString().trim()
         val tags = getSelectedTags()
-
         val sb = StringBuilder()
         sb.appendLine("---")
-        if (title.isNotEmpty()) {
-            sb.appendLine("title: \"$title\"")
-        }
-        if (tags.isNotEmpty()) {
-            sb.appendLine("tags:")
-            tags.forEach { sb.appendLine("  - $it") }
-        }
+        sb.appendLine("title: \"$title\"")
+        val tagArray = tags.joinToString(", ") { "\"$it\"" }
+        sb.appendLine("tags: [$tagArray]")
+        val dateStr = dateCreated?.format(isoFormatter) ?: ""
+        sb.appendLine("date: \"$dateStr\"")
+        val lastModStr = dateLastMod?.format(isoFormatter) ?: ""
+        sb.appendLine("lastmod: \"$lastModStr\"")
         sb.appendLine("---")
         return sb.toString()
     }
 
-    private fun updateBodyForMode() {
-        when (currentMode) {
-            "Plain Text" -> {
-                // Save user content without frontmatter
-                val currentText = binding.editBody.text.toString()
-                if (!currentText.startsWith("---")) {
-                    userContent = currentText
-                } else {
-                    // Extract content after second ---
-                    val parts = currentText.split("---", limit = 3)
-                    userContent = if (parts.size >= 3) parts[2].trimStart('\n') else ""
-                }
-                // Show frontmatter + content
-                val frontmatter = buildFrontmatter()
-                val fullText = frontmatter + "\n" + userContent
-                binding.editBody.removeTextChangedListener(bodyWatcher)
-                binding.editBody.setText(fullText)
-                binding.editBody.addTextChangedListener(bodyWatcher)
-            }
-            "Markdown" -> {
-                // Save current state if switching from Plain Text
-                val currentText = binding.editBody.text.toString()
-                if (currentText.startsWith("---")) {
-                    val parts = currentText.split("---", limit = 3)
-                    userContent = if (parts.size >= 3) parts[2].trimStart('\n') else ""
-                } else {
-                    userContent = currentText
-                }
-                // Show only user content
-                binding.editBody.removeTextChangedListener(bodyWatcher)
-                binding.editBody.setText(userContent)
-                binding.editBody.addTextChangedListener(bodyWatcher)
-            }
-        }
+    private fun buildFullBlock(): String {
+        return buildFrontmatter() + "\n" + userBody
     }
 
-    private val bodyWatcher = object : TextWatcher {
-        override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-        override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
-        override fun afterTextChanged(s: Editable?) {
-            if (currentMode == "Markdown") {
-                userContent = s.toString()
+    /** Strip the frontmatter block (if present) and return just the body */
+    private fun extractBody(text: String): String {
+        if (!text.startsWith("---")) return text
+        val afterFirst = text.removePrefix("---").trimStart('\n', '\r')
+        val closingIndex = afterFirst.indexOf("\n---")
+        if (closingIndex < 0) return text
+        return afterFirst.substring(closingIndex + 4) // skip "\n---"
+            .trimStart('\n', '\r')
+    }
+
+    // ─── Sync editor to mode ─────────────────────────────────────────────────
+
+    private fun syncEditorToMode() {
+        isProgrammaticChange = true
+        when (currentMode) {
+            "Markdown" -> {
+                // Show only the body content
+                binding.editBody.setText(userBody)
+            }
+            "Plain Text" -> {
+                // Show frontmatter + body
+                binding.editBody.setText(buildFullBlock())
             }
         }
+        binding.editBody.setSelection(binding.editBody.text?.length ?: 0)
+        isProgrammaticChange = false
     }
+
+    // ─── Image picker ────────────────────────────────────────────────────────
 
     private fun setupUploadButton() {
         binding.btnUploadImage.setOnClickListener {
@@ -193,99 +219,72 @@ class NewNoteFragment : Fragment() {
 
     private fun handleImageSelected(uri: Uri) {
         val fileName = getFileName(uri) ?: "image.jpg"
-        selectedImageName = fileName
         binding.textFileName.text = fileName
 
-        // Build the shortcode from the template
         val shortcodeTemplate = binding.editShortcode.text.toString()
         val shortcode = shortcodeTemplate.replace("IMAGE_NAME", fileName)
 
-        // Insert shortcode into body
-        val currentText = if (currentMode == "Markdown") {
-            userContent
-        } else {
-            val bodyText = binding.editBody.text.toString()
-            if (bodyText.startsWith("---")) {
-                val parts = bodyText.split("---", limit = 3)
-                if (parts.size >= 3) parts[2].trimStart('\n') else ""
-            } else {
-                bodyText
-            }
-        }
+        // Append shortcode as a new line in the user body
+        userBody = if (userBody.isEmpty()) shortcode else "$userBody\n$shortcode"
 
-        userContent = if (currentText.isEmpty()) {
-            shortcode
-        } else {
-            "$currentText\n$shortcode"
-        }
-
-        updateBodyForMode()
+        syncEditorToMode()
     }
 
     private fun getFileName(uri: Uri): String? {
         var result: String? = null
         if (uri.scheme == "content") {
-            val cursor = requireContext().contentResolver.query(uri, null, null, null, null)
-            cursor?.use {
-                if (it.moveToFirst()) {
-                    val index = it.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-                    if (index >= 0) {
-                        result = it.getString(index)
-                    }
+            requireContext().contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    val idx = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                    if (idx >= 0) result = cursor.getString(idx)
                 }
             }
         }
-        if (result == null) {
-            result = uri.path?.substringAfterLast('/')
-        }
-        return result
+        return result ?: uri.path?.substringAfterLast('/')
     }
+
+    // ─── Save ────────────────────────────────────────────────────────────────
 
     private fun setupSaveButton() {
         binding.btnSaveNote.setOnClickListener {
-            // Save password if checkbox is checked
             if (binding.checkSavePassword.isChecked) {
                 savePassword(binding.editPassword.text.toString())
             }
-
             Snackbar.make(
                 binding.root,
-                "Save Note clicked — backend not connected yet",
+                "Save Note — backend not connected yet",
                 Snackbar.LENGTH_SHORT
             ).show()
         }
     }
 
+    // ─── Password persistence ────────────────────────────────────────────────
+
     private fun loadSavedPassword() {
-        val prefs = requireContext().getSharedPreferences("microblog_prefs", Context.MODE_PRIVATE)
-        val savedPassword = prefs.getString("saved_password", null)
-        val passwordSaved = prefs.getBoolean("password_saved", false)
-        if (passwordSaved && savedPassword != null) {
-            binding.editPassword.setText(savedPassword)
+        val prefs = prefs()
+        if (prefs.getBoolean("password_saved", false)) {
+            binding.editPassword.setText(prefs.getString("saved_password", ""))
             binding.checkSavePassword.isChecked = true
         }
     }
 
     private fun savePassword(password: String) {
-        val prefs = requireContext().getSharedPreferences("microblog_prefs", Context.MODE_PRIVATE)
-        prefs.edit()
-            .putString("saved_password", password)
-            .putBoolean("password_saved", true)
+        prefs().edit().putString("saved_password", password).putBoolean("password_saved", true)
             .apply()
     }
 
     private fun setupSavePasswordCheckbox() {
         binding.checkSavePassword.setOnCheckedChangeListener { _, isChecked ->
             if (!isChecked) {
-                // Clear saved password when unchecked
-                val prefs = requireContext().getSharedPreferences("microblog_prefs", Context.MODE_PRIVATE)
-                prefs.edit()
-                    .remove("saved_password")
-                    .putBoolean("password_saved", false)
-                    .apply()
+                prefs().edit().remove("saved_password").putBoolean("password_saved", false).apply()
             }
         }
     }
+
+    private fun prefs() =
+        requireContext().getSharedPreferences("microblog_prefs", Context.MODE_PRIVATE)
+
+    // ─── Lifecycle ───────────────────────────────────────────────────────────
 
     override fun onDestroyView() {
         super.onDestroyView()
