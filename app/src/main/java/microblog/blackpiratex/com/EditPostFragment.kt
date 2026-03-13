@@ -13,7 +13,7 @@ import microblog.blackpiratex.com.databinding.FragmentEditPostBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.time.format.DateTimeFormatter
+import java.time.Instant
 
 class EditPostFragment : Fragment() {
 
@@ -22,8 +22,6 @@ class EditPostFragment : Fragment() {
 
     private var postPath: String? = null
     private var sha: String? = null
-
-    private val isoFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssxxx")
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -93,7 +91,9 @@ class EditPostFragment : Fragment() {
         if (binding.checkSavePassword.isChecked) savePassword(password)
 
         val content = binding.editBody.text?.toString().orEmpty()
-        val updatedContent = updateFrontmatterLastmod(content, nowIsoString())
+        val backendLastmod = Instant.now().toString()
+        val updatedContent = updateFrontmatterLastmod(content, backendLastmod)
+        val clientIsoDate = normalizeIsoDate(extractFrontmatterValue(content, "date"))
 
         setStatus("Saving…", StatusColor.SENDING)
         binding.btnSaveChanges.isEnabled = false
@@ -105,7 +105,9 @@ class EditPostFragment : Fragment() {
                     password = password,
                     path = path,
                     sha = currentSha,
-                    content = updatedContent
+                    content = updatedContent,
+                    clientIsoDate = clientIsoDate,
+                    lastmod = backendLastmod
                 )
             }
 
@@ -124,9 +126,36 @@ class EditPostFragment : Fragment() {
         }
     }
 
-    private fun nowIsoString(): String {
-        // Use a stable, explicit ISO format; keep same pattern used elsewhere in the app.
-        return java.time.ZonedDateTime.now().format(isoFormatter)
+    private fun normalizeIsoDate(raw: String?): String? {
+        if (raw.isNullOrBlank()) return null
+        val cleaned = raw.trim().trim('"', '\'')
+        if (Regex("""^\\d{4}-\\d{2}-\\d{2}$""").matches(cleaned)) return cleaned + "T00:00:00Z"
+
+        return runCatching { java.time.OffsetDateTime.parse(cleaned).toInstant().toString() }.getOrNull()
+            ?: runCatching { java.time.ZonedDateTime.parse(cleaned).toInstant().toString() }.getOrNull()
+            ?: runCatching { Instant.parse(cleaned).toString() }.getOrNull()
+    }
+
+    private fun extractFrontmatterValue(markdown: String, key: String): String? {
+        val newline = if (markdown.contains("\r\n")) "\r\n" else "\n"
+        val startMarker = "---$newline"
+        if (!markdown.startsWith(startMarker) && !markdown.startsWith("---\n") && !markdown.startsWith("---\r\n")) {
+            return null
+        }
+
+        val startLen = when {
+            markdown.startsWith("---\r\n") -> 5
+            markdown.startsWith("---\n") -> 4
+            else -> startMarker.length
+        }
+
+        val endNeedle = newline + "---"
+        val endIndex = markdown.indexOf(endNeedle, startLen)
+        if (endIndex < 0) return null
+
+        val fm = markdown.substring(startLen, endIndex)
+        val line = fm.lineSequence().firstOrNull { it.trimStart().startsWith("$key:") } ?: return null
+        return line.substringAfter(":").trim()
     }
 
     private fun updateFrontmatterLastmod(markdown: String, newIso: String): String {
