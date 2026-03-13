@@ -13,7 +13,6 @@ import com.example.blankapp.databinding.FragmentEditPostBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 
 class EditPostFragment : Fragment() {
@@ -94,8 +93,7 @@ class EditPostFragment : Fragment() {
         if (binding.checkSavePassword.isChecked) savePassword(password)
 
         val content = binding.editBody.text?.toString().orEmpty()
-        val lastmod = ZonedDateTime.now().format(isoFormatter)
-        val clientIsoDate = inferClientIsoDate(path, content)
+        val updatedContent = updateFrontmatterLastmod(content, nowIsoString())
 
         setStatus("Saving…", StatusColor.SENDING)
         binding.btnSaveChanges.isEnabled = false
@@ -107,9 +105,7 @@ class EditPostFragment : Fragment() {
                     password = password,
                     path = path,
                     sha = currentSha,
-                    content = content,
-                    clientIsoDate = clientIsoDate,
-                    lastmod = lastmod
+                    content = updatedContent
                 )
             }
 
@@ -128,23 +124,62 @@ class EditPostFragment : Fragment() {
         }
     }
 
-    private fun inferClientIsoDate(path: String, content: String): String? {
-        val fromFrontmatter = extractFrontmatterValue(content, "date")?.trim()?.trim('"', '\'')
-        if (!fromFrontmatter.isNullOrBlank()) return fromFrontmatter
-
-        val name = path.substringAfterLast('/')
-        val match = Regex("""^(\d{4}-\d{2}-\d{2})-""").find(name) ?: return null
-        return match.groupValues[1] + "T00:00:00Z"
+    private fun nowIsoString(): String {
+        // Use a stable, explicit ISO format; keep same pattern used elsewhere in the app.
+        return java.time.ZonedDateTime.now().format(isoFormatter)
     }
 
-    private fun extractFrontmatterValue(markdown: String, key: String): String? {
-        if (!markdown.startsWith("---")) return null
-        val afterFirst = markdown.removePrefix("---").trimStart('\n', '\r')
-        val closingIndex = afterFirst.indexOf("\n---")
-        if (closingIndex < 0) return null
-        val fm = afterFirst.substring(0, closingIndex)
-        val line = fm.lineSequence().firstOrNull { it.trimStart().startsWith("$key:") } ?: return null
-        return line.substringAfter(":").trim()
+    private fun updateFrontmatterLastmod(markdown: String, newIso: String): String {
+        val newline = if (markdown.contains("\r\n")) "\r\n" else "\n"
+        val startMarker = "---$newline"
+        if (!markdown.startsWith(startMarker) && !markdown.startsWith("---\n") && !markdown.startsWith("---\r\n")) {
+            return markdown
+        }
+
+        val startLen = when {
+            markdown.startsWith("---\r\n") -> 5
+            markdown.startsWith("---\n") -> 4
+            else -> startMarker.length
+        }
+
+        val endNeedle = newline + "---"
+        val endIndex = markdown.indexOf(endNeedle, startLen)
+        if (endIndex < 0) return markdown
+
+        val fm = markdown.substring(startLen, endIndex)
+        val body = markdown.substring(endIndex + endNeedle.length) // includes whatever newline(s) follow
+
+        val lines = fm.split(Regex("\r?\n")).toMutableList()
+        var replaced = false
+        for (i in lines.indices) {
+            val trimmed = lines[i].trimStart()
+            if (!trimmed.startsWith("lastmod:")) continue
+
+            val existingValue = trimmed.substringAfter(":").trim()
+            val newValue = when {
+                existingValue.startsWith("\"") && existingValue.endsWith("\"") -> "\"$newIso\""
+                existingValue.startsWith("'") && existingValue.endsWith("'") -> "'$newIso'"
+                else -> newIso
+            }
+
+            val indent = lines[i].takeWhile { it == ' ' || it == '\t' }
+            lines[i] = indent + "lastmod: " + newValue
+            replaced = true
+            break
+        }
+
+        if (!replaced) {
+            // Add lastmod inside existing frontmatter (do not create new frontmatter).
+            val insertAt = lines.indexOfFirst { it.trimStart().startsWith("date:") }
+            if (insertAt >= 0) {
+                lines.add(insertAt + 1, "lastmod: \"$newIso\"")
+            } else {
+                lines.add("lastmod: \"$newIso\"")
+            }
+        }
+
+        val newFrontmatter = lines.joinToString(newline)
+        return "---$newline" + newFrontmatter + newline + "---" + body
     }
 
     private enum class StatusColor { NEUTRAL, SENDING, SUCCESS, ERROR }
@@ -198,4 +233,3 @@ class EditPostFragment : Fragment() {
         fun argsForPath(path: String) = Bundle().apply { putString(ARG_POST_PATH, path) }
     }
 }
-

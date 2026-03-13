@@ -90,8 +90,7 @@ Request JSON (fields used by the app for updates):
 - `content` (string, required): edited raw content
 - `path` (string, required): existing repo path
 - `sha` (string, required): file SHA from `/api/get-post-content`
-- `client_iso_date` (string, optional): ISO date string (best-effort inferred)
-- `lastmod` (string, optional): ISO date string set to "now"
+- Note: the app updates `lastmod` inside the Markdown frontmatter client-side (only if frontmatter already exists) and does not ask the backend to regenerate frontmatter.
 
 ## Code Map (Where Things Live)
 

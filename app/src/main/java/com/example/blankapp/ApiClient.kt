@@ -197,9 +197,7 @@ object ApiClient {
         password: String,
         path: String,
         sha: String,
-        content: String,
-        clientIsoDate: String? = null,
-        lastmod: String? = null
+        content: String
     ): PostResult = withContext(Dispatchers.IO) {
         try {
             val json = JSONObject().apply {
@@ -207,8 +205,6 @@ object ApiClient {
                 put("content", content)
                 put("path", path)
                 put("sha", sha)
-                if (!clientIsoDate.isNullOrBlank()) put("client_iso_date", clientIsoDate)
-                if (!lastmod.isNullOrBlank()) put("lastmod", lastmod)
             }
 
             val requestBody = json.toString().toRequestBody("application/json".toMediaType())
