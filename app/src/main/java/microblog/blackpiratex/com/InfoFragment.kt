@@ -1,11 +1,11 @@
-package com.example.blankapp
+package microblog.blackpiratex.com
 
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
-import com.example.blankapp.databinding.FragmentInfoBinding
+import microblog.blackpiratex.com.databinding.FragmentInfoBinding
 
 class InfoFragment : Fragment() {
 

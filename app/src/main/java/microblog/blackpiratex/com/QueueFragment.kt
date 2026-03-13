@@ -1,4 +1,4 @@
-package com.example.blankapp
+package microblog.blackpiratex.com
 
 import android.os.Bundle
 import android.view.*
@@ -7,9 +7,9 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.example.blankapp.data.PendingPost
-import com.example.blankapp.data.QueueStore
-import com.example.blankapp.databinding.FragmentQueueBinding
+import microblog.blackpiratex.com.data.PendingPost
+import microblog.blackpiratex.com.data.QueueStore
+import microblog.blackpiratex.com.databinding.FragmentQueueBinding
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 

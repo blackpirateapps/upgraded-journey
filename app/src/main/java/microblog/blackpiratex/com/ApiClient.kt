@@ -1,4 +1,4 @@
-package com.example.blankapp
+package microblog.blackpiratex.com
 
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient

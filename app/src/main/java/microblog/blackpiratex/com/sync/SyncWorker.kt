@@ -1,10 +1,10 @@
-package com.example.blankapp.sync
+package microblog.blackpiratex.com.sync
 
 import android.content.Context
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
-import com.example.blankapp.ApiClient
-import com.example.blankapp.data.QueueStore
+import microblog.blackpiratex.com.ApiClient
+import microblog.blackpiratex.com.data.QueueStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 

@@ -1,10 +1,10 @@
-package com.example.blankapp
+package microblog.blackpiratex.com
 
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.ui.setupWithNavController
-import com.example.blankapp.databinding.ActivityMainBinding
+import microblog.blackpiratex.com.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity() {
 

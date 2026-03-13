@@ -7,13 +7,13 @@
 
     <fragment
         android:id="@+id/newNoteFragment"
-        android:name="com.example.blankapp.NewNoteFragment"
+        android:name="microblog.blackpiratex.com.NewNoteFragment"
         android:label="@string/nav_new_note"
         tools:layout="@layout/fragment_new_note" />
 
     <fragment
         android:id="@+id/postsFragment"
-        android:name="com.example.blankapp.PostsFragment"
+        android:name="microblog.blackpiratex.com.PostsFragment"
         android:label="Posts"
         tools:layout="@layout/fragment_posts">
         <action
@@ -23,7 +23,7 @@
 
     <fragment
         android:id="@+id/editPostFragment"
-        android:name="com.example.blankapp.EditPostFragment"
+        android:name="microblog.blackpiratex.com.EditPostFragment"
         android:label="@string/nav_edit_post"
         tools:layout="@layout/fragment_edit_post">
         <argument
@@ -33,13 +33,13 @@
 
     <fragment
         android:id="@+id/queueFragment"
-        android:name="com.example.blankapp.QueueFragment"
+        android:name="microblog.blackpiratex.com.QueueFragment"
         android:label="Queue"
         tools:layout="@layout/fragment_queue" />
 
     <fragment
         android:id="@+id/infoFragment"
-        android:name="com.example.blankapp.InfoFragment"
+        android:name="microblog.blackpiratex.com.InfoFragment"
         android:label="@string/nav_info"
         tools:layout="@layout/fragment_info" />
 

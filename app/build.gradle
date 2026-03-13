@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace 'com.example.blankapp'
+    namespace 'microblog.blackpiratex.com'
     compileSdk 34
 
     defaultConfig {
-        applicationId "com.example.blankapp"
+        applicationId "microblog.blackpiratex.com"
         minSdk 24
         targetSdk 34
         versionCode 1

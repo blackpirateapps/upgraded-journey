@@ -96,7 +96,7 @@ Request JSON (fields used by the app for updates):
 
 Networking:
 
-- `app/src/main/java/com/example/blankapp/ApiClient.kt`
+- `app/src/main/java/microblog/blackpiratex/com/ApiClient.kt`
   - `BASE_URL` points at the current backend host.
   - `quickPost(...)` sends `POST /api/quick-post`.
   - `getPosts()` calls `GET /api/get-posts`.
@@ -105,7 +105,7 @@ Networking:
 
 Compose / submit UI:
 
-- `app/src/main/java/com/example/blankapp/NewNoteFragment.kt`
+- `app/src/main/java/microblog/blackpiratex/com/NewNoteFragment.kt`
   - Builds frontmatter in "Plain Text" mode.
   - Handles image selection and base64 encoding.
   - Calls `ApiClient.quickPost`.
@@ -114,22 +114,22 @@ Compose / submit UI:
 
 Offline queue:
 
-- `app/src/main/java/com/example/blankapp/data/QueueDatabase.kt`
+- `app/src/main/java/microblog/blackpiratex/com/data/QueueDatabase.kt`
   - `PendingPost` serialization to/from JSON.
   - `QueueStore` backed by `SharedPreferences("sync_queue")`.
 
 Background sync:
 
-- `app/src/main/java/com/example/blankapp/sync/SyncWorker.kt`
+- `app/src/main/java/microblog/blackpiratex/com/sync/SyncWorker.kt`
   - Loads `saved_password` from `SharedPreferences("microblog_prefs")`.
   - Drains queue FIFO and retries with exponential backoff on failure.
 
 Other UI:
 
-- `app/src/main/java/com/example/blankapp/PostsFragment.kt` (list posts)
-- `app/src/main/java/com/example/blankapp/EditPostFragment.kt` (edit an existing post)
-- `app/src/main/java/com/example/blankapp/QueueFragment.kt` (list queued items)
-- `app/src/main/java/com/example/blankapp/InfoFragment.kt` (static info)
+- `app/src/main/java/microblog/blackpiratex/com/PostsFragment.kt` (list posts)
+- `app/src/main/java/microblog/blackpiratex/com/EditPostFragment.kt` (edit an existing post)
+- `app/src/main/java/microblog/blackpiratex/com/QueueFragment.kt` (list queued items)
+- `app/src/main/java/microblog/blackpiratex/com/InfoFragment.kt` (static info)
 
 ## Local Development
 

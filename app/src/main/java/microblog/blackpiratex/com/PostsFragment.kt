@@ -1,4 +1,4 @@
-package com.example.blankapp
+package microblog.blackpiratex.com
 
 import android.os.Bundle
 import android.view.*
@@ -8,7 +8,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.example.blankapp.databinding.FragmentPostsBinding
+import microblog.blackpiratex.com.databinding.FragmentPostsBinding
 import kotlinx.coroutines.launch
 
 class PostsFragment : Fragment() {

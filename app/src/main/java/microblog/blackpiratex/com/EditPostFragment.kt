@@ -1,4 +1,4 @@
-package com.example.blankapp
+package microblog.blackpiratex.com
 
 import android.content.Context
 import android.graphics.Color
@@ -9,7 +9,7 @@ import android.view.ViewGroup
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
-import com.example.blankapp.databinding.FragmentEditPostBinding
+import microblog.blackpiratex.com.databinding.FragmentEditPostBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
