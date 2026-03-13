@@ -4,6 +4,7 @@
 
     <!-- Navigation -->
     <string name="nav_new_note">New Note</string>
+    <string name="nav_edit_post">Edit Post</string>
     <string name="nav_info">Info</string>
 
     <!-- New Note Screen -->
@@ -33,9 +34,12 @@
     <string name="hint_shortcode">{{&lt; img src=\"/img/IMAGE_NAME\" &gt;}}</string>
     <string name="label_password">Password</string>
     <string name="label_save_password">Save Password</string>
+    <string name="label_post_path">Post Path</string>
 
     <!-- Action -->
     <string name="action_save_note">Save Note</string>
+    <string name="action_save_changes">Save Changes</string>
+    <string name="action_reload">Reload</string>
 
     <!-- Info Screen -->
     <string name="info_title">About Microblog</string>

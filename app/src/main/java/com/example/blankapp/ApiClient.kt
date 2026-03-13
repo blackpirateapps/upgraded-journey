@@ -8,6 +8,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.net.URLEncoder
 import java.util.concurrent.TimeUnit
 
 data class PostResult(
@@ -15,6 +16,13 @@ data class PostResult(
     val message: String,
     val path: String? = null,
     val debugLog: String = ""
+)
+
+data class PostContentResult(
+    val success: Boolean,
+    val message: String,
+    val content: String? = null,
+    val sha: String? = null
 )
 
 object ApiClient {
@@ -143,6 +151,88 @@ object ApiClient {
             } else emptyList()
         } catch (e: Exception) {
             emptyList()
+        }
+    }
+
+    /**
+     * Fetches a single post's raw content and SHA from GET /api/get-post-content?path=...
+     * Needed for updating an existing file via /api/create-post (requires sha + path).
+     */
+    suspend fun getPostContent(path: String): PostContentResult = withContext(Dispatchers.IO) {
+        try {
+            val encoded = URLEncoder.encode(path, "UTF-8")
+            val request = Request.Builder()
+                .url("$BASE_URL/api/get-post-content?path=$encoded")
+                .get()
+                .build()
+
+            val response = client.newCall(request).execute()
+            val body = response.body?.string() ?: ""
+            val code = response.code
+
+            if (response.isSuccessful) {
+                val json = JSONObject(body)
+                PostContentResult(
+                    success = true,
+                    message = "OK",
+                    content = json.getString("content"),
+                    sha = json.getString("sha")
+                )
+            } else {
+                val responseJson = runCatching { JSONObject(body) }.getOrNull()
+                val errMsg = responseJson?.optString("error", "HTTP $code") ?: "HTTP $code"
+                PostContentResult(false, errMsg, null, null)
+            }
+        } catch (e: Exception) {
+            PostContentResult(false, e.message ?: "Unknown error", null, null)
+        }
+    }
+
+    /**
+     * Updates an existing markdown file by calling POST /api/create-post with sha + path.
+     *
+     * The backend supports additional fields like title/tags; this app sends the edited raw content.
+     */
+    suspend fun updatePost(
+        password: String,
+        path: String,
+        sha: String,
+        content: String,
+        clientIsoDate: String? = null,
+        lastmod: String? = null
+    ): PostResult = withContext(Dispatchers.IO) {
+        try {
+            val json = JSONObject().apply {
+                put("password", password)
+                put("content", content)
+                put("path", path)
+                put("sha", sha)
+                if (!clientIsoDate.isNullOrBlank()) put("client_iso_date", clientIsoDate)
+                if (!lastmod.isNullOrBlank()) put("lastmod", lastmod)
+            }
+
+            val requestBody = json.toString().toRequestBody("application/json".toMediaType())
+            val request = Request.Builder()
+                .url("$BASE_URL/api/create-post")
+                .post(requestBody)
+                .build()
+
+            val response = client.newCall(request).execute()
+            val responseBody = response.body?.string() ?: ""
+            val code = response.code
+
+            if (response.isSuccessful) {
+                val responseJson = runCatching { JSONObject(responseBody) }.getOrNull()
+                val msg = responseJson?.optString("message", "Success") ?: "Success"
+                val url = responseJson?.optString("path")
+                PostResult(true, msg, url)
+            } else {
+                val responseJson = runCatching { JSONObject(responseBody) }.getOrNull()
+                val errMsg = responseJson?.optString("error", "HTTP $code") ?: "HTTP $code"
+                PostResult(false, errMsg, null)
+            }
+        } catch (e: Exception) {
+            PostResult(false, e.message ?: "Unknown error", null)
         }
     }
 }

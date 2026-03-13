@@ -5,6 +5,7 @@ import android.view.*
 import android.widget.*
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
+import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.blankapp.databinding.FragmentPostsBinding
@@ -61,6 +62,10 @@ class PostsFragment : Fragment() {
             val item = items[position]
             holder.titleText.text = item.name
             holder.pathText.text = item.path
+            holder.itemView.setOnClickListener {
+                val args = EditPostFragment.argsForPath(item.path)
+                findNavController().navigate(R.id.action_postsFragment_to_editPostFragment, args)
+            }
         }
 
         override fun getItemCount() = items.size
